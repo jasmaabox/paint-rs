@@ -13,3 +13,7 @@ features = ["v3_16"]
 [dependencies.gio]
 version = ""
 features = ["v2_44"]
+
+[dependencies.gdk]
+version = ""
+features = ["v3_16"]

@@ -1,4 +1,4 @@
-# Paint Rust
+# paint-rs
 
 WIP paint clone in Rust
 
