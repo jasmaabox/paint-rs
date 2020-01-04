@@ -4,6 +4,7 @@ extern crate gtk;
 extern crate gio;
 extern crate gdk;
 extern crate gdk_pixbuf;
+mod drawing;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -11,15 +12,16 @@ use std::rc::Rc;
 use gtk::prelude::*;
 use gio::prelude::*;
 use gdk::prelude::*;
-
 use gtk::{
     Application, ApplicationWindow,
     Button, DrawingArea,
     Box,
     MenuBar,
 };
-
 use gdk_pixbuf::Pixbuf;
+
+use crate::drawing::Drawing;
+
 
 fn main() {
     let application = Application::new(
@@ -50,6 +52,14 @@ fn main() {
         ));
         let buffer_draw = buffer.clone();
         let buffer_move = buffer.clone();
+        let buffer_press = buffer.clone();
+
+        let drawing = Rc::new(RefCell::new(
+            Drawing::new()
+        ));
+        let drawing_move = drawing.clone();
+        let drawing_press = drawing.clone();
+        let drawing_release = drawing.clone();
 
         // Window
         let window = ApplicationWindow::new(app);
@@ -103,24 +113,37 @@ fn main() {
             c.stroke();
             gtk::Inhibit(false)
         });
-        drawing_area.connect_button_press_event(move |_, e| {
+        drawing_area.connect_button_press_event(move |w, e| {
             *is_pointer_down_up.borrow_mut() = true;
             let (x, y) = e.get_position();
             println!("pointer at: {} {}", x, y);
+
+            // Draw
+            let buffer = buffer_press.borrow();
+            let mut drawing = drawing_press.borrow_mut();
+            drawing.draw(e.get_position(), &buffer);
+            w.queue_draw();
+
             gtk::Inhibit(false)
         });
-        drawing_area.connect_button_release_event(move |_, _| {
+        drawing_area.connect_button_release_event(move |w, _| {
             *is_pointer_down_down.borrow_mut() = false;
+
+            let mut drawing = drawing_release.borrow_mut();
+            drawing.clear_previous();
+            w.queue_draw();
+
             gtk::Inhibit(false)
         });
         drawing_area.connect_motion_notify_event(move |w, e| {
-            if *is_pointer_down_draw.borrow_mut() {
+            if *is_pointer_down_draw.borrow() {
                 let (x, y) = e.get_position();
                 println!("pointer at: {} {}", x, y);
 
                 // Draw
                 let buffer = buffer_move.borrow();
-                buffer.put_pixel(x as i32, y as i32, 255, 0, 0, 0);
+                let mut drawing = drawing_move.borrow_mut();
+                drawing.draw(e.get_position(), &buffer);
                 w.queue_draw();
             }
             gtk::Inhibit(false)
