@@ -17,3 +17,11 @@ features = ["v2_44"]
 [dependencies.gdk]
 version = ""
 features = ["v3_16"]
+
+[dependencies.gdk-pixbuf]
+version = ""
+features = ["v2_32"]
+
+[dependencies.cairo-rs]
+version = ""
+features = ["v1_14"]

@@ -1,12 +1,16 @@
+// main.rs
+
 extern crate gtk;
 extern crate gio;
 extern crate gdk;
+extern crate gdk_pixbuf;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use gtk::prelude::*;
 use gio::prelude::*;
+use gdk::prelude::*;
 
 use gtk::{
     Application, ApplicationWindow,
@@ -14,6 +18,8 @@ use gtk::{
     Box,
     MenuBar,
 };
+
+use gdk_pixbuf::Pixbuf;
 
 fn main() {
     let application = Application::new(
@@ -23,10 +29,27 @@ fn main() {
 
     application.connect_activate(|app| {
 
+        // Data
         let is_pointer_down = Rc::new(RefCell::new(false));
         let is_pointer_down_up = is_pointer_down.clone();
         let is_pointer_down_down = is_pointer_down.clone();
         let is_pointer_down_draw = is_pointer_down.clone();
+
+        let buffer = Rc::new(RefCell::new(
+            {
+                // Init buffer
+                let buf = Pixbuf::new(
+                    gdk_pixbuf::Colorspace::Rgb,
+                    false,
+                    8,
+                    400, 300,
+                ).unwrap();
+                buf.fill(0xffffff00);
+                buf
+            }
+        ));
+        let buffer_draw = buffer.clone();
+        let buffer_move = buffer.clone();
 
         // Window
         let window = ApplicationWindow::new(app);
@@ -73,10 +96,11 @@ fn main() {
         );
 
         drawing_area.connect_draw(move |_, c|{
-            c.rectangle(1.0, 1.0, 100.0, 200.0);
-            c.set_source_rgb(1.0, 0.0, 0.0);
-            c.fill();
-
+            // Update buffer
+            let buffer = buffer_draw.borrow();
+            c.set_source_pixbuf(&buffer, 0.0, 0.0);
+            c.paint();
+            c.stroke();
             gtk::Inhibit(false)
         });
         drawing_area.connect_button_press_event(move |_, e| {
@@ -89,10 +113,15 @@ fn main() {
             *is_pointer_down_down.borrow_mut() = false;
             gtk::Inhibit(false)
         });
-        drawing_area.connect_motion_notify_event(move |_, e| {
+        drawing_area.connect_motion_notify_event(move |w, e| {
             if *is_pointer_down_draw.borrow_mut() {
                 let (x, y) = e.get_position();
                 println!("pointer at: {} {}", x, y);
+
+                // Draw
+                let buffer = buffer_move.borrow();
+                buffer.put_pixel(x as i32, y as i32, 255, 0, 0, 0);
+                w.queue_draw();
             }
             gtk::Inhibit(false)
         });
