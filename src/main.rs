@@ -2,12 +2,15 @@ extern crate gtk;
 extern crate gio;
 extern crate gdk;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use gtk::prelude::*;
 use gio::prelude::*;
 
 use gtk::{
     Application, ApplicationWindow,
-    Button, Label, DrawingArea, Entry,
+    Button, DrawingArea,
     Box,
     MenuBar,
 };
@@ -19,6 +22,13 @@ fn main() {
     ).expect("failed to initialize GTK application");
 
     application.connect_activate(|app| {
+
+        let is_pointer_down = Rc::new(RefCell::new(false));
+        let is_pointer_down_up = is_pointer_down.clone();
+        let is_pointer_down_down = is_pointer_down.clone();
+        let is_pointer_down_draw = is_pointer_down.clone();
+
+        // Window
         let window = ApplicationWindow::new(app);
         window.set_title("Paint");
         window.set_default_size(400, 300);
@@ -56,35 +66,35 @@ fn main() {
 
         // Drawing area
         let drawing_area = DrawingArea::new();
-        //window.add_events(gdk::EventMask::all());
         drawing_area.add_events(
             gdk::EventMask::BUTTON_PRESS_MASK |
             gdk::EventMask::BUTTON_RELEASE_MASK |
             gdk::EventMask::POINTER_MOTION_MASK
         );
 
-        drawing_area.connect_draw(|w, c|{
-            // Print dimensions for now
-            println!("w:{} h:{}", w.get_allocated_width(), w.get_allocated_height());
-            
+        drawing_area.connect_draw(move |_, c|{
             c.rectangle(1.0, 1.0, 100.0, 200.0);
             c.set_source_rgb(1.0, 0.0, 0.0);
             c.fill();
 
-            gtk::Inhibit(true)
+            gtk::Inhibit(false)
         });
-
-        drawing_area.connect_button_press_event(|_, e| {
-            println!("{} down", e.get_button());
-            gtk::Inhibit(true)
+        drawing_area.connect_button_press_event(move |_, e| {
+            *is_pointer_down_up.borrow_mut() = true;
+            let (x, y) = e.get_position();
+            println!("pointer at: {} {}", x, y);
+            gtk::Inhibit(false)
         });
-        drawing_area.connect_button_release_event(|_, e| {
-            println!("{} up", e.get_button());
-            gtk::Inhibit(true)
+        drawing_area.connect_button_release_event(move |_, _| {
+            *is_pointer_down_down.borrow_mut() = false;
+            gtk::Inhibit(false)
         });
-        drawing_area.connect_motion_notify_event(|_, e| {
-            println!("motion!");
-            gtk::Inhibit(true)
+        drawing_area.connect_motion_notify_event(move |_, e| {
+            if *is_pointer_down_draw.borrow_mut() {
+                let (x, y) = e.get_position();
+                println!("pointer at: {} {}", x, y);
+            }
+            gtk::Inhibit(false)
         });
 
         container.add(&drawing_area);
